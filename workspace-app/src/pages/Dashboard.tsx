@@ -5,6 +5,7 @@ import { del, get, patch, post } from "../api/client";
 import { Modal } from "../components/Modal";
 import { formatBytes, timeAgo, useDebounced } from "../components/util";
 import { useWorkspace } from "../layout/WorkspaceContext";
+import { Select } from "../ui/Select";
 
 import type { SceneSummary } from "../api/types";
 
@@ -151,15 +152,16 @@ export const Dashboard = ({ view }: { view: View }) => {
           )}
           {view !== "shared" && view !== "recent" && (
             <>
-              <select
+              <Select
+                ariaLabel="Sort by"
                 value={sort}
-                onChange={(e) => setSort(e.target.value as typeof sort)}
-                aria-label="Sort by"
-              >
-                <option value="updatedAt">Last modified</option>
-                <option value="createdAt">Created</option>
-                <option value="name">Name</option>
-              </select>
+                onChange={setSort}
+                options={[
+                  { value: "updatedAt", label: "Last modified" },
+                  { value: "createdAt", label: "Created" },
+                  { value: "name", label: "Name" },
+                ]}
+              />
               <button
                 className="btn"
                 onClick={() => setDir(dir === "asc" ? "desc" : "asc")}
@@ -358,26 +360,25 @@ export const Dashboard = ({ view }: { view: View }) => {
           title={`Move “${dialog.scene.name}”`}
           onClose={() => setDialog(null)}
         >
-          <select
-            defaultValue={dialog.scene.folderId ?? ""}
-            onChange={(e) =>
+          <Select
+            block
+            ariaLabel="Folder"
+            value={dialog.scene.folderId ?? ""}
+            onChange={(folderId) =>
               act(() =>
                 patch(`/scenes/${dialog.scene.id}`, {
-                  folderId: e.target.value || null,
+                  folderId: folderId || null,
                 }),
               ).then(() => {
                 setDialog(null);
                 void reloadFolders();
               })
             }
-          >
-            <option value="">No folder (root)</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "", label: "No folder (root)" },
+              ...folders.map((f) => ({ value: f.id, label: f.name })),
+            ]}
+          />
         </Modal>
       )}
       {dialog?.kind === "confirm-purge" && (

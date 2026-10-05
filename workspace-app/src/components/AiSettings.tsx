@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { get, post, put } from "../api/client";
 import { useWorkspace } from "../layout/WorkspaceContext";
+import { Select } from "../ui/Select";
 
 import type { Member } from "../api/types";
 
@@ -179,21 +180,18 @@ export const AiSettings = () => {
         </label>
         <label>
           Provider
-          <select
+          <Select
+            block
+            ariaLabel="Provider"
             value={provider}
-            onChange={(e) => {
-              const p = providers.find((x) => x.id === e.target.value);
-              setProvider(e.target.value);
+            options={providers.map((p) => ({ value: p.id, label: p.label }))}
+            onChange={(id) => {
+              const p = providers.find((x) => x.id === id);
+              setProvider(id);
               setModel(p?.defaultModel ?? "");
               setBaseUrl("");
             }}
-          >
-            {providers.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <label>
           Model

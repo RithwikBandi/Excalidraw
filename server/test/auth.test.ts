@@ -202,6 +202,80 @@ describe("profile and password", () => {
     expect(bad.statusCode).toBe(400);
   });
 
+  describe("profile photo", () => {
+    // 1x1 transparent PNG
+    const PNG =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const put = (cookie: string | undefined, payload: unknown) =>
+      t.app.inject({
+        method: "PUT",
+        url: "/api/v1/me/avatar",
+        headers: authed(cookie),
+        payload: payload as any,
+      });
+
+    it("stores a photo, serves it sandboxed to signed-in users, and removes it", async () => {
+      const { cookie } = await register(t);
+      const up = await put(cookie, { mimeType: "image/png", dataBase64: PNG });
+      expect(up.statusCode).toBe(200);
+      const url: string = up.json().user.avatarUrl;
+      expect(url).toMatch(/^\/api\/v1\/avatars\/[a-f0-9]{24}\?v=\d+$/);
+
+      const img = await t.app.inject({
+        method: "GET",
+        url,
+        headers: authed(cookie),
+      });
+      expect(img.statusCode).toBe(200);
+      expect(img.headers["content-type"]).toContain("image/png");
+      expect(img.headers["content-security-policy"]).toContain("sandbox");
+
+      const del = await t.app.inject({
+        method: "DELETE",
+        url: "/api/v1/me/avatar",
+        headers: authed(cookie),
+      });
+      expect(del.statusCode).toBe(200);
+      expect(del.json().user.avatarUrl).toBeNull();
+      const gone = await t.app.inject({
+        method: "GET",
+        url,
+        headers: authed(cookie),
+      });
+      expect(gone.statusCode).toBe(404);
+    });
+
+    it("rejects fake images, SVG and unsupported types", async () => {
+      const { cookie } = await register(t);
+      const fake = await put(cookie, {
+        mimeType: "image/png",
+        dataBase64: Buffer.from("definitely not a png").toString("base64"),
+      });
+      expect(fake.statusCode).toBe(415);
+      const svg = await put(cookie, {
+        mimeType: "image/svg+xml",
+        dataBase64: Buffer.from("<svg onload=alert(1)/>").toString("base64"),
+      });
+      expect(svg.statusCode).toBe(400);
+    });
+
+    it("requires a session to read, and 404s on malformed ids", async () => {
+      const { cookie } = await register(t);
+      await put(cookie, { mimeType: "image/png", dataBase64: PNG });
+      const anon = await t.app.inject({
+        method: "GET",
+        url: "/api/v1/avatars/aaaaaaaaaaaaaaaaaaaaaaaa",
+      });
+      expect(anon.statusCode).toBe(401);
+      const bad = await t.app.inject({
+        method: "GET",
+        url: "/api/v1/avatars/..%2F..%2Fetc",
+        headers: authed(cookie),
+      });
+      expect(bad.statusCode).toBe(404);
+    });
+  });
+
   it("changes password, revokes other sessions, keeps current", async () => {
     const { body, cookie } = await register(t);
     const other = await t.app.inject({

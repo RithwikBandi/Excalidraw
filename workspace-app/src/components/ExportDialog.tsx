@@ -12,6 +12,7 @@ import {
 } from "../export/pdf";
 import { exportPptx } from "../export/pptx";
 import { getSlideElements } from "../presentation/slides";
+import { Select } from "../ui/Select";
 
 import { Modal } from "./Modal";
 
@@ -126,43 +127,56 @@ export const ExportDialog = ({
         {format === "pptx" && (
           <label>
             Fidelity
-            <select
+            <Select<PptxMode>
+              block
+              ariaLabel="Fidelity"
               value={pptxMode}
-              onChange={(e) => setPptxMode(e.target.value as PptxMode)}
+              onChange={setPptxMode}
               disabled={!!busy}
-            >
-              <option value="editable">Editable shapes (recommended)</option>
-              <option value="picture">
-                Exact appearance (one picture per slide)
-              </option>
-            </select>
+              options={[
+                { value: "editable", label: "Editable shapes (recommended)" },
+                {
+                  value: "picture",
+                  label: "Exact appearance (one picture per slide)",
+                },
+              ]}
+            />
           </label>
         )}
         <label>
           What to export
-          <select
+          <Select<PdfScope>
+            block
+            ariaLabel="What to export"
             value={effectiveScope}
-            onChange={(e) => setScope(e.target.value as PdfScope)}
+            onChange={setScope}
             disabled={!!busy}
-          >
-            <option value="frames" disabled={frames === 0}>
-              Each frame as a {format === "pdf" ? "page" : "slide"}
-              {frames
-                ? ` (${frames} ${
-                    frames === 1 ? "item" : "items"
-                  }, in slide order)`
-                : " — no frames in this scene"}
-            </option>
-            <option value="scene">Whole canvas on one page</option>
-            {format === "pdf" && (
-              <option value="selection" disabled={selected === 0}>
-                Current selection
-                {selected
-                  ? ` (${selected} element${selected === 1 ? "" : "s"})`
-                  : " — nothing selected"}
-              </option>
-            )}
-          </select>
+            options={[
+              {
+                value: "frames",
+                label: `Each frame as a ${format === "pdf" ? "page" : "slide"}`,
+                hint: frames
+                  ? `${frames} ${
+                      frames === 1 ? "item" : "items"
+                    }, in slide order`
+                  : "No frames in this scene",
+                disabled: frames === 0,
+              },
+              { value: "scene", label: "Whole canvas on one page" },
+              ...(format === "pdf"
+                ? [
+                    {
+                      value: "selection" as const,
+                      label: "Current selection",
+                      hint: selected
+                        ? `${selected} element${selected === 1 ? "" : "s"}`
+                        : "Nothing selected",
+                      disabled: selected === 0,
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </label>
         <label className="check">
           <input

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 import {
+  chooseOption,
   createScene,
   drawRectangle,
   elementCount,
@@ -83,11 +84,11 @@ test("export refuses an empty canvas with a clear message", async ({
   await register(page);
   await createScene(page);
   await page.getByRole("button", { name: "Export", exact: true }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("combobox")
-    .first()
-    .selectOption("scene");
+  await chooseOption(
+    page,
+    page.getByRole("dialog").getByRole("combobox").first(),
+    "scene",
+  );
   await page.getByRole("button", { name: "Export PDF" }).click();
   await expect(page.getByRole("alert")).toHaveText(
     "There is nothing to export.",

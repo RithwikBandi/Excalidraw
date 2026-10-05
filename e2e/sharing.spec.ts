@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  chooseOption,
   closeAll,
   createScene,
   drawRectangle,
@@ -69,9 +70,11 @@ test("view-only link, per-user permissions and revocation", async ({
   await waitForEditor(bob);
   await expect(bob.getByText("View only")).toBeVisible();
 
-  await dialog
-    .getByLabel(`Permission for ${bobUser.displayName}`)
-    .selectOption("EDIT");
+  await chooseOption(
+    page,
+    dialog.getByLabel(`Permission for ${bobUser.displayName}`),
+    "EDIT",
+  );
   await bob.reload();
   await waitForEditor(bob);
   await expect(bob.getByText("View only")).toHaveCount(0);
@@ -114,14 +117,14 @@ test("private scenes stay private: a workspace member cannot open them", async (
   // make it private
   await page.goto(`/scene/${sceneId}`);
   await page.getByRole("button", { name: "Share" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("combobox")
-    .first()
-    .selectOption("private");
+  await chooseOption(
+    page,
+    page.getByRole("dialog").getByRole("combobox").first(),
+    "private",
+  );
   await expect(
     page.getByRole("dialog").getByRole("combobox").first(),
-  ).toHaveValue("private");
+  ).toHaveAttribute("data-value", "private");
   await carol.goto(`/scene/${sceneId}`);
   await expect(
     carol.getByRole("heading", { name: "Scene not found" }),

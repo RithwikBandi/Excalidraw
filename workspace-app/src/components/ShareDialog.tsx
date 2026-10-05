@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ApiError, del, get, patch, post, put } from "../api/client";
+import { Select } from "../ui/Select";
 
 import { Modal } from "./Modal";
 
@@ -88,22 +89,25 @@ export const ShareDialog = ({
         <div className="share">
           <section>
             <h3>Visibility</h3>
-            <select
+            <Select
+              block
+              ariaLabel="Visibility"
               value={visibility}
-              onChange={(e) => {
-                const v = e.target.value as typeof visibility;
+              options={[
+                {
+                  value: "workspace",
+                  label: "Everyone in the workspace can edit",
+                },
+                { value: "private", label: "Private — only people below" },
+              ]}
+              onChange={(v) => {
                 void run(async () => {
                   await patch(`/scenes/${scene.id}`, { visibility: v });
                   setVisibility(v);
                   onVisibilityChange(v);
                 });
               }}
-            >
-              <option value="workspace">
-                Everyone in the workspace can edit
-              </option>
-              <option value="private">Private — only people below</option>
-            </select>
+            />
           </section>
 
           <section>
@@ -129,14 +133,15 @@ export const ShareDialog = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <select
+              <Select
+                ariaLabel="Permission"
                 value={level}
-                onChange={(e) => setLevel(e.target.value as any)}
-                aria-label="Permission"
-              >
-                <option value="VIEW">Can view</option>
-                <option value="EDIT">Can edit</option>
-              </select>
+                onChange={setLevel}
+                options={[
+                  { value: "VIEW", label: "Can view" },
+                  { value: "EDIT", label: "Can edit" },
+                ]}
+              />
               <button className="btn primary">Invite</button>
             </form>
             <ul className="people">
@@ -146,21 +151,24 @@ export const ShareDialog = ({
                     <div className="strong">{p.displayName}</div>
                     <div className="muted small">{p.email}</div>
                   </div>
-                  <select
+                  <Select
+                    size="sm"
+                    align="end"
+                    ariaLabel={`Permission for ${p.displayName}`}
                     value={p.level}
-                    aria-label={`Permission for ${p.displayName}`}
-                    onChange={(e) =>
+                    onChange={(lv) =>
                       run(() =>
                         put(`/scenes/${scene.id}/permissions`, {
                           email: p.email,
-                          level: e.target.value,
+                          level: lv,
                         }),
                       )
                     }
-                  >
-                    <option value="VIEW">Can view</option>
-                    <option value="EDIT">Can edit</option>
-                  </select>
+                    options={[
+                      { value: "VIEW", label: "Can view" },
+                      { value: "EDIT", label: "Can edit" },
+                    ]}
+                  />
                   <button
                     className="btn ghost danger small"
                     onClick={() =>
@@ -184,26 +192,26 @@ export const ShareDialog = ({
           <section>
             <h3>Links</h3>
             <div className="row">
-              <select
+              <Select
+                ariaLabel="Link permission"
                 value={linkLevel}
-                onChange={(e) => setLinkLevel(e.target.value as any)}
-                aria-label="Link permission"
-              >
-                <option value="VIEW">Anyone with the link can view</option>
-                <option value="EDIT">Anyone with the link can edit</option>
-              </select>
-              <select
-                value={expires}
-                onChange={(e) =>
-                  setExpires(e.target.value ? Number(e.target.value) : "")
-                }
-                aria-label="Expiry"
-              >
-                <option value="">Never expires</option>
-                <option value="1">1 day</option>
-                <option value="7">7 days</option>
-                <option value="30">30 days</option>
-              </select>
+                onChange={setLinkLevel}
+                options={[
+                  { value: "VIEW", label: "Anyone with the link can view" },
+                  { value: "EDIT", label: "Anyone with the link can edit" },
+                ]}
+              />
+              <Select
+                ariaLabel="Expiry"
+                value={String(expires)}
+                onChange={(v) => setExpires(v ? Number(v) : "")}
+                options={[
+                  { value: "", label: "Never expires" },
+                  { value: "1", label: "1 day" },
+                  { value: "7", label: "7 days" },
+                  { value: "30", label: "30 days" },
+                ]}
+              />
               <button
                 className="btn primary"
                 onClick={() =>

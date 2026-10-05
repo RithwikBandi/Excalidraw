@@ -28,6 +28,12 @@ Authentication is entirely local: there is no external identity provider and not
 
 Other endpoints: `GET /auth/me`, `PATCH /me` (display name, avatar URL — `http(s)` only).
 
+### Profile photo
+
+- `PUT /me/avatar` — `{ mimeType, dataBase64 }`. PNG, JPEG or WebP only (SVG and GIF are refused: SVG can carry script), at most 2 MB, and the bytes must match the claimed type. The web app crops and downsizes to 256×256 WebP before uploading. The image is stored under `avatars/<userId>` in the configured object storage and the user's `avatarUrl` becomes `/api/v1/avatars/<userId>?v=<timestamp>` (the `v` busts the long-lived cache when the photo changes).
+- `DELETE /me/avatar` — removes the stored image and clears `avatarUrl`.
+- `GET /avatars/:userId` — any signed-in user may load any avatar (people appear in presence, comments and member lists). Malformed or unknown ids are indistinguishable `404`s, and responses carry `Content-Security-Policy: default-src 'none'; sandbox`. Signed-out visitors (e.g. guests on a share link) get `401`, and the UI falls back to the person's initial.
+
 ## CSRF and origin protection
 
 Cookie-authenticated, state-changing requests must pass all of:

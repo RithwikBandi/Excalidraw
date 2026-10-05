@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  chooseOption,
+  chooseOptionByName,
   createScene,
   drawRectangle,
   elementCount,
@@ -59,10 +61,11 @@ test("folders, move, search, sort, trash, restore and delete forever", async ({
   // move "Alpha plan" into it
   await page.getByLabel("Actions for Alpha plan").click();
   await page.getByRole("button", { name: "Move to folder…" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("combobox")
-    .selectOption({ label: "Marketing" });
+  await chooseOptionByName(
+    page,
+    page.getByRole("dialog").getByRole("combobox"),
+    "Marketing",
+  );
   await page.getByRole("link", { name: "Marketing" }).click();
   await expect(page.getByText("Alpha plan")).toBeVisible();
   await expect(page.getByText("Bravo plan")).toHaveCount(0);
@@ -75,7 +78,7 @@ test("folders, move, search, sort, trash, restore and delete forever", async ({
   await page.getByLabel("Search scenes").fill("");
 
   // sort by name ascending: Alpha first
-  await page.getByLabel("Sort by").selectOption("name");
+  await chooseOption(page, page.getByLabel("Sort by"), "name");
   await page.getByRole("button", { name: "Toggle sort order" }).click(); // -> ascending
   const names = page.locator(".scene-name");
   await expect(names.first()).toHaveText("Alpha plan");
@@ -116,15 +119,19 @@ test("wrong password shows a generic error, and registering twice is refused", a
   const user = await register(page);
   await page.getByRole("button", { name: "Sign out" }).click();
   await page.goto("/login");
-  await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill("definitely-wrong-password");
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("definitely-wrong-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toHaveText("Wrong email or password.");
 
   await page.goto("/register");
-  await page.getByLabel("Display name").fill("Again");
-  await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill("another-long-password");
+  await page.getByLabel("Display name", { exact: true }).fill("Again");
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("another-long-password");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("alert")).toContainText("already exists");
 });

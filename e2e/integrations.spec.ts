@@ -2,7 +2,13 @@ import http from "node:http";
 
 import { expect, test } from "@playwright/test";
 
-import { createScene, elementCount, register, waitForEditor } from "./helpers";
+import {
+  chooseOptionByName,
+  createScene,
+  elementCount,
+  register,
+  waitForEditor,
+} from "./helpers";
 
 import type { AddressInfo } from "node:net";
 
@@ -48,8 +54,12 @@ test("API keys: secret shown once, works against the public API and MCP, revocab
   await expect(page.getByText(secret.slice(15))).toHaveCount(0);
 
   // revoke -> immediately unusable
-  page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "Revoke" }).first().click();
+  // confirmation is now the app's own dialog, not a native window.confirm
+  await page
+    .getByRole("dialog", { name: /^Revoke / })
+    .getByRole("button", { name: "Revoke key" })
+    .click();
   await expect
     .poll(async () =>
       (
@@ -98,9 +108,11 @@ test("AI text-to-diagram: admin configures a local model, a member generates an 
 
     // before configuring: text-to-diagram is not offered in the editor
     await page.getByLabel("Enable AI in this workspace").check();
-    await page
-      .getByLabel("Provider")
-      .selectOption({ label: "Local / OpenAI-compatible" });
+    await chooseOptionByName(
+      page,
+      page.getByLabel("Provider"),
+      "Local / OpenAI-compatible",
+    );
     await page.getByLabel("Endpoint URL").fill(modelUrl);
     await page.getByLabel("Requests per day — each member").fill("7");
     await page.getByRole("button", { name: "Save", exact: true }).click();

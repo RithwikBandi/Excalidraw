@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { del, get, post, put } from "../api/client";
 import { useWorkspace } from "../layout/WorkspaceContext";
+import { useConfirm } from "../ui/ConfirmProvider";
 
 interface Item {
   id: string;
@@ -65,6 +66,7 @@ const Section = ({
   otherBase?: string;
   otherLabel?: string;
 }) => {
+  const confirm = useConfirm();
   const [items, setItems] = useState<Item[] | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -196,13 +198,20 @@ const Section = ({
           <button
             className="btn small danger"
             disabled={!items?.length}
-            onClick={() =>
-              window.confirm(`Delete all items in “${title}”?`) &&
-              run(async () => {
-                await del(base);
-                return { items: [] };
-              })
-            }
+            onClick={async () => {
+              const ok = await confirm({
+                title: `Delete all items in “${title}”?`,
+                message: "This can’t be undone.",
+                confirmLabel: "Delete all",
+                tone: "danger",
+              });
+              if (ok) {
+                await run(async () => {
+                  await del(base);
+                  return { items: [] };
+                });
+              }
+            }}
           >
             Delete all
           </button>

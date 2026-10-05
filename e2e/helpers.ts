@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 
 let n = 0;
 export const uniqueUser = (label = "user") => ({
@@ -14,9 +14,10 @@ export type TestUser = ReturnType<typeof uniqueUser>;
 /** Registers through the real form and lands on the dashboard. */
 export const register = async (page: Page, user: TestUser = uniqueUser()) => {
   await page.goto("/register");
-  await page.getByLabel("Display name").fill(user.displayName);
-  await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill(user.password);
+  // `exact`: the password field also has a "Show password" toggle button
+  await page.getByLabel("Display name", { exact: true }).fill(user.displayName);
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByRole("heading", { name: "All scenes" })).toBeVisible();
   return user;
@@ -24,10 +25,33 @@ export const register = async (page: Page, user: TestUser = uniqueUser()) => {
 
 export const login = async (page: Page, user: TestUser) => {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(user.email);
-  await page.getByLabel("Password").fill(user.password);
+  await page.getByLabel("Email", { exact: true }).fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "All scenes" })).toBeVisible();
+};
+
+/** Same as `chooseOption`, but matches the option by its visible name. */
+export const chooseOptionByName = async (
+  page: Page,
+  combobox: Locator,
+  name: string | RegExp,
+) => {
+  await combobox.click();
+  await page.getByRole("option", { name }).click();
+};
+
+/**
+ * Picks an option in the app's custom dropdown (ARIA combobox). The native
+ * `selectOption` no longer applies: options are matched by their value.
+ */
+export const chooseOption = async (
+  page: Page,
+  combobox: Locator,
+  value: string,
+) => {
+  await combobox.click();
+  await page.locator(`[role="option"][data-value="${value}"]`).click();
 };
 
 export const newUserPage = async (browser: Browser, label: string) => {

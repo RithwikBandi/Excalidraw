@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { del, get, post } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { useWorkspace } from "../layout/WorkspaceContext";
+import { useConfirm } from "../ui/ConfirmProvider";
+import { Select } from "../ui/Select";
 
 import { timeAgo } from "./util";
 
@@ -59,6 +61,7 @@ const KeySection = ({
   restrictWorkspaceId?: string;
 }) => {
   const { features } = useAuth();
+  const confirm = useConfirm();
   const [keys, setKeys] = useState<Key[] | null>(null);
   const [name, setName] = useState("");
   const [scopes, setScopes] = useState<Set<string>>(
@@ -110,11 +113,13 @@ const KeySection = ({
   };
 
   const rotate = async (k: Key) => {
-    if (
-      !window.confirm(
-        `Rotate “${k.name}”? The current secret stops working immediately.`,
-      )
-    ) {
+    const ok = await confirm({
+      title: `Rotate “${k.name}”?`,
+      message: "The current secret stops working immediately.",
+      confirmLabel: "Rotate key",
+      tone: "danger",
+    });
+    if (!ok) {
       return;
     }
     try {
@@ -126,11 +131,13 @@ const KeySection = ({
     }
   };
   const revoke = async (k: Key) => {
-    if (
-      !window.confirm(
-        `Revoke “${k.name}”? Anything using it will lose access immediately.`,
-      )
-    ) {
+    const ok = await confirm({
+      title: `Revoke “${k.name}”?`,
+      message: "Anything using it will lose access immediately.",
+      confirmLabel: "Revoke key",
+      tone: "danger",
+    });
+    if (!ok) {
       return;
     }
     try {
@@ -217,16 +224,17 @@ const KeySection = ({
             maxLength={80}
             aria-label="Key name"
           />
-          <select
+          <Select
+            ariaLabel="Expiry"
             value={expires}
-            onChange={(e) => setExpires(e.target.value)}
-            aria-label="Expiry"
-          >
-            <option value="">No expiry</option>
-            <option value="30">30 days</option>
-            <option value="90">90 days</option>
-            <option value="365">1 year</option>
-          </select>
+            onChange={setExpires}
+            options={[
+              { value: "", label: "No expiry" },
+              { value: "30", label: "30 days" },
+              { value: "90", label: "90 days" },
+              { value: "365", label: "1 year" },
+            ]}
+          />
           <button className="btn primary" disabled={busy || scopes.size === 0}>
             Create key
           </button>

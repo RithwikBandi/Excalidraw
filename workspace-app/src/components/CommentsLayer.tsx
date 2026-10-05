@@ -6,6 +6,9 @@ import type {
   ExcalidrawImperativeAPI,
 } from "@excalidraw/excalidraw/types";
 
+import { Avatar as UserAvatar } from "../ui/Avatar";
+import { useConfirm } from "../ui/ConfirmProvider";
+
 import { timeAgo } from "./util";
 
 import type { CommentView, Thread } from "../editor/useComments";
@@ -129,13 +132,7 @@ export const PlaceLayer = ({
 );
 
 const Avatar = ({ c }: { c: CommentView }) => (
-  <span className="avatar sm">
-    {c.authorAvatarUrl ? (
-      <img alt="" src={c.authorAvatarUrl} referrerPolicy="no-referrer" />
-    ) : (
-      c.authorName.slice(0, 1).toUpperCase()
-    )}
-  </span>
+  <UserAvatar name={c.authorName} src={c.authorAvatarUrl} size={24} />
 );
 
 const Composer = ({
@@ -214,6 +211,7 @@ export const CommentsPanel = ({
   onClose: () => void;
   onCancelDraft: () => void;
 }) => {
+  const confirm = useConfirm();
   const [filter, setFilter] = useState<"open" | "resolved">("open");
   const shown = threads.filter((t) =>
     filter === "open" ? !t.root.resolvedAt : !!t.root.resolvedAt,
@@ -292,15 +290,19 @@ export const CommentsPanel = ({
                   {(c.userId === me || canModerate) && (
                     <button
                       className="link-btn small"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        if (
-                          window.confirm(
-                            c.parentId
-                              ? "Delete this reply?"
-                              : "Delete this thread and its replies?",
-                          )
-                        ) {
+                        const ok = await confirm({
+                          title: c.parentId
+                            ? "Delete this reply?"
+                            : "Delete this thread?",
+                          message: c.parentId
+                            ? undefined
+                            : "The thread and all its replies will be removed.",
+                          confirmLabel: "Delete",
+                          tone: "danger",
+                        });
+                        if (ok) {
                           void api.remove(c.id);
                         }
                       }}

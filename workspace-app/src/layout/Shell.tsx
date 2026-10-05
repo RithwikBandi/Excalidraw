@@ -1,9 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 
 import { post } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { Modal } from "../components/Modal";
+import { Avatar } from "../ui/Avatar";
+import { Icon } from "../ui/Icon";
 
 import { useWorkspace, WorkspaceProvider } from "./WorkspaceContext";
 
@@ -30,7 +32,9 @@ const FolderTree = ({
             className="nav-item"
             style={{ paddingLeft: 12 + depth * 14 }}
           >
-            <span className="ico">▸</span>
+            <span className="ico">
+              <Icon name="folder" size={16} />
+            </span>
             <span className="ellipsis">{f.name}</span>
           </NavLink>
           <FolderTree
@@ -44,11 +48,113 @@ const FolderTree = ({
   </>
 );
 
-const Sidebar = () => {
-  const { user, logout, features } = useAuth();
+const tileLetter = (name: string) => [...name.trim()][0]?.toUpperCase() ?? "?";
+
+/** Workspace menu: replaces the native <select>, which rendered as an unstyled OS list. */
+const WorkspaceSwitcher = ({ onNew }: { onNew: () => void }) => {
+  const { workspaces, current, select } = useWorkspace();
+  const { features } = useAuth();
+  const nav = useNavigate();
   const multiUser = features?.workspaces !== false;
-  const { workspaces, current, folders, select, reload, reloadFolders } =
-    useWorkspace();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onDown = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        root.current?.querySelector<HTMLElement>(".ws-btn")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (!current) {
+    return null;
+  }
+  return (
+    <div className="ws-switch" ref={root}>
+      <button
+        type="button"
+        className="ws-btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Workspace: ${current.name}`}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="ws-tile">{tileLetter(current.name)}</span>
+        <span className="ws-meta">
+          <span className="name ellipsis">{current.name}</span>
+          <span className="sub">{current.role.toLowerCase()}</span>
+        </span>
+        <Icon name="chevronsUpDown" size={15} />
+      </button>
+      {open && (
+        <div className="ws-menu" role="menu" aria-label="Workspaces">
+          <div className="label">Workspaces</div>
+          {workspaces.map((w) => (
+            <button
+              key={w.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={w.id === current.id}
+              className="ws-item"
+              autoFocus={w.id === current.id}
+              onClick={() => {
+                setOpen(false);
+                if (w.id !== current.id) {
+                  select(w.id);
+                  nav(`/w/${w.id}`);
+                }
+              }}
+            >
+              <span className="ws-tile" style={{ width: 24, height: 24 }}>
+                {tileLetter(w.name)}
+              </span>
+              <span className="ellipsis">{w.name}</span>
+              {w.id === current.id && (
+                <Icon name="check" size={15} className="tick" />
+              )}
+            </button>
+          ))}
+          {multiUser && (
+            <>
+              <div className="ws-sep" />
+              <button
+                type="button"
+                role="menuitem"
+                className="ws-item add"
+                onClick={() => {
+                  setOpen(false);
+                  onNew();
+                }}
+              >
+                <Icon name="plusCircle" size={18} /> New workspace…
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Sidebar = () => {
+  const { user, logout } = useAuth();
+  const { current, folders, select, reload, reloadFolders } = useWorkspace();
   const nav = useNavigate();
   const [creating, setCreating] = useState<"workspace" | "folder" | null>(null);
   const [name, setName] = useState("");
@@ -81,48 +187,41 @@ const Sidebar = () => {
   const base = `/w/${current.id}`;
   return (
     <aside className="sidebar">
-      <div className="ws-switch">
-        <select
-          aria-label="Workspace"
-          value={current.id}
-          onChange={(e) => {
-            if (e.target.value === "__new") {
-              setCreating("workspace");
-              return;
-            }
-            select(e.target.value);
-            nav(`/w/${e.target.value}`);
-          }}
-        >
-          {workspaces.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.name}
-            </option>
-          ))}
-          {multiUser && <option value="__new">＋ New workspace…</option>}
-        </select>
-      </div>
+      <WorkspaceSwitcher onNew={() => setCreating("workspace")} />
       <nav className="nav">
         <NavLink end to={base} className="nav-item">
-          <span className="ico">⌂</span>Home
+          <span className="ico">
+            <Icon name="home" size={17} />
+          </span>
+          Home
         </NavLink>
         <NavLink to={`${base}/recent`} className="nav-item">
-          <span className="ico">◷</span>Recent
+          <span className="ico">
+            <Icon name="clock" size={17} />
+          </span>
+          Recent
         </NavLink>
         <NavLink to={`${base}/mine`} className="nav-item">
-          <span className="ico">◉</span>My scenes
+          <span className="ico">
+            <Icon name="pencil" size={17} />
+          </span>
+          My scenes
         </NavLink>
         <NavLink to={`${base}/shared`} className="nav-item">
-          <span className="ico">⇄</span>Shared with me
+          <span className="ico">
+            <Icon name="arrowsLR" size={17} />
+          </span>
+          Shared with me
         </NavLink>
         <div className="nav-section">
           <span>Folders</span>
           <button
             className="icon-btn"
             title="New folder"
+            aria-label="New folder"
             onClick={() => setCreating("folder")}
           >
-            ＋
+            <Icon name="plus" size={15} />
           </button>
         </div>
         <FolderTree
@@ -138,28 +237,47 @@ const Sidebar = () => {
           <span>Workspace</span>
         </div>
         <NavLink to={`${base}/libraries`} className="nav-item">
-          <span className="ico">❖</span>Libraries
+          <span className="ico">
+            <Icon name="layers" size={17} />
+          </span>
+          Libraries
         </NavLink>
         <NavLink to={`${base}/trash`} className="nav-item">
-          <span className="ico">🗑</span>Trash
+          <span className="ico">
+            <Icon name="trash" size={17} />
+          </span>
+          Trash
         </NavLink>
         <NavLink to={`${base}/settings`} className="nav-item">
-          <span className="ico">⚙</span>Settings
+          <span className="ico">
+            <Icon name="sliders" size={17} />
+          </span>
+          Settings
         </NavLink>
       </nav>
       <div className="user-box">
-        <div className="avatar">
-          {user?.displayName.slice(0, 1).toUpperCase()}
-        </div>
-        <div className="user-meta">
-          <div className="ellipsis strong">{user?.displayName}</div>
-          <div className="ellipsis muted small">{user?.email}</div>
-        </div>
+        <NavLink
+          to={`${base}/settings/profile`}
+          className="user-link"
+          aria-label="Edit your profile"
+        >
+          <Avatar
+            name={user?.displayName ?? "?"}
+            src={user?.avatarUrl}
+            size={34}
+          />
+          <div className="user-meta">
+            <div className="ellipsis strong">{user?.displayName}</div>
+            <div className="ellipsis muted small">{user?.email}</div>
+          </div>
+        </NavLink>
         <button
-          className="btn ghost small"
+          className="icon-btn"
+          title="Sign out"
+          aria-label="Sign out"
           onClick={() => logout().then(() => nav("/login"))}
         >
-          Sign out
+          <Icon name="logOut" size={17} />
         </button>
       </div>
       {creating && (

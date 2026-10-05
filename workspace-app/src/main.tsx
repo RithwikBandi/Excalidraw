@@ -8,8 +8,11 @@ import "./assetPath";
 import { App } from "./App";
 import { installGlobalErrorReporting } from "./api/telemetry";
 import { AuthProvider } from "./auth/AuthProvider";
+import { ConfirmProvider } from "./ui/ConfirmProvider";
+import { ToastProvider } from "./ui/Toast";
 
 import "./styles.css";
+import "./ui/ui.css";
 
 installGlobalErrorReporting();
 
@@ -17,7 +20,11 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ToastProvider>
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

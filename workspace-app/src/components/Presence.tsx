@@ -1,3 +1,5 @@
+import { Avatar } from "../ui/Avatar";
+
 import type { PresenceUser } from "../editor/useCollab";
 import type { CollabStatus } from "../editor/useCollab";
 
@@ -21,7 +23,7 @@ export const Presence = ({
         title={`${u.name}${u.access === "VIEW" ? " (viewing)" : ""}`}
       >
         {u.avatarUrl ? (
-          <img alt="" src={u.avatarUrl} referrerPolicy="no-referrer" />
+          <Avatar name={u.name} src={u.avatarUrl} size={22} />
         ) : (
           u.name.slice(0, 1).toUpperCase()
         )}
